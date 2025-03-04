@@ -15,7 +15,7 @@ public class ValuesNode extends PlanNode {
   private final int repeatTimes;
 
   @JsonCreator
-  private ValuesNode(@JsonProperty("id") String id,
+  public ValuesNode(@JsonProperty("id") String id,
       @JsonProperty("data") String serializedRowVectors,
       @JsonProperty("parallelizable") boolean parallelizable,
       @JsonProperty("repeatTimes") int repeatTimes) {

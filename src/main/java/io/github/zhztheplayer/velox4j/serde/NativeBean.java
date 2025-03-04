@@ -1,4 +1,6 @@
 package io.github.zhztheplayer.velox4j.serde;
 
-public interface NativeBean {
+import java.io.Serializable;
+
+public interface NativeBean extends Serializable {
 }
