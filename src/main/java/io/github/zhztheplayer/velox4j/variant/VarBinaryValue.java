@@ -11,7 +11,7 @@ public class VarBinaryValue extends Variant {
   private final String value;
 
   @JsonCreator
-  private VarBinaryValue(@JsonProperty("value") String value) {
+  public VarBinaryValue(@JsonProperty("value") String value) {
     this.value = value;
   }
 

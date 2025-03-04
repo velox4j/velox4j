@@ -17,7 +17,7 @@ public class ConstantTypedExpr extends TypedExpr {
   private final String serializedVector;
 
   @JsonCreator
-  private ConstantTypedExpr(@JsonProperty("type") Type returnType,
+  public ConstantTypedExpr(@JsonProperty("type") Type returnType,
       @JsonProperty("value") Variant value,
       @JsonProperty("valueVector") String serializedVector) {
     super(returnType, Collections.emptyList());
