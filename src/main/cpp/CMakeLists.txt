@@ -60,6 +60,7 @@ CPMAddPackage(
         URL_HASH MD5=${VELOX_SOURCE_URL_MD5}
         PATCHES
         "${VELOX_PATCH_DIR}/0001-fix-Add-a-patch-to-fix-folly-build-on-arm64-Linux.patch"
+        "${VELOX_PATCH_DIR}/0002-feat-Make-Task-next-invocations-non-blocking.patch"
 )
 
 # Import JniHelpers.

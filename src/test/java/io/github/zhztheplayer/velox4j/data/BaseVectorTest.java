@@ -59,7 +59,7 @@ public class BaseVectorTest {
   @Test
   public void testToString() {
     final Session session = Velox4j.newSession(memoryManager);
-    final RowVector input = SerdeTests.newSampleRowVector(session);
+    final RowVector input = BaseVectorTests.newSampleRowVector(session);
     Assert.assertEquals(ResourceTests.readResourceAsString("vector-output/to-string-1.txt"),
         input.toString());
     session.close();
@@ -68,7 +68,7 @@ public class BaseVectorTest {
   @Test
   public void testSlice() {
     final Session session = Velox4j.newSession(memoryManager);
-    final RowVector input = SerdeTests.newSampleRowVector(session);
+    final RowVector input = BaseVectorTests.newSampleRowVector(session);
     Assert.assertEquals(3, input.getSize());
     final RowVector sliced1 = input.slice(0, 2).asRowVector();
     final RowVector sliced2 = input.slice(2, 1).asRowVector();
@@ -82,8 +82,8 @@ public class BaseVectorTest {
   @Test
   public void testAppend() {
     final Session session = Velox4j.newSession(memoryManager);
-    final RowVector input1 = SerdeTests.newSampleRowVector(session);
-    final RowVector input2 = SerdeTests.newSampleRowVector(session);
+    final RowVector input1 = BaseVectorTests.newSampleRowVector(session);
+    final RowVector input2 = BaseVectorTests.newSampleRowVector(session);
     Assert.assertEquals(3, input1.getSize());
     Assert.assertEquals(3, input2.getSize());
     input1.append(input2);

@@ -41,7 +41,7 @@ final class JniWrapper {
   native long executeQuery(String queryJson);
 
   // For UpIterator.
-  native long upIteratorNext(long address);
+  native long upIteratorGet(long id);
 
   // For DownIterator.
   native long newExternalStream(DownIterator itr);

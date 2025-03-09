@@ -2,6 +2,7 @@ package io.github.zhztheplayer.velox4j.arrow;
 
 import io.github.zhztheplayer.velox4j.Velox4j;
 import io.github.zhztheplayer.velox4j.data.BaseVector;
+import io.github.zhztheplayer.velox4j.data.BaseVectorTests;
 import io.github.zhztheplayer.velox4j.data.RowVector;
 import io.github.zhztheplayer.velox4j.memory.AllocationListener;
 import io.github.zhztheplayer.velox4j.memory.MemoryManager;
@@ -34,13 +35,11 @@ public class ArrowTest {
   @Test
   public void testBaseVectorRoundTrip() {
     final Session session = Velox4j.newSession(memoryManager);
-    final RowVector input = SerdeTests.newSampleRowVector(session);
-    final String serialized = input.serialize();
+    final RowVector input = BaseVectorTests.newSampleRowVector(session);
     final BufferAllocator alloc = new RootAllocator(Long.MAX_VALUE);
     final FieldVector arrowVector = Arrow.toArrowVector(alloc, input);
     final BaseVector imported = session.arrowOps().fromArrowVector(alloc, arrowVector);
-    final String serializedImported = imported.serialize();
-    Assert.assertEquals(serialized, serializedImported);
+    BaseVectorTests.assertEquals(input, imported);
     arrowVector.close();
     session.close();
   }
@@ -48,13 +47,11 @@ public class ArrowTest {
   @Test
   public void testRowVectorRoundTrip() {
     final Session session = Velox4j.newSession(memoryManager);
-    final RowVector input = SerdeTests.newSampleRowVector(session);
-    final String serialized = input.serialize();
+    final RowVector input = BaseVectorTests.newSampleRowVector(session);
     final BufferAllocator alloc = new RootAllocator(Long.MAX_VALUE);
     final Table arrowTable = Arrow.toArrowTable(alloc, input);
     final RowVector imported = session.arrowOps().fromArrowTable(alloc, arrowTable);
-    final String serializedImported = imported.serialize();
-    Assert.assertEquals(serialized, serializedImported);
+    BaseVectorTests.assertEquals(input, imported);
     arrowTable.close();
     session.close();
   }

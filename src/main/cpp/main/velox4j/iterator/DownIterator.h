@@ -17,6 +17,8 @@
 
 #pragma once
 
+#include "folly/executors/IOThreadPoolExecutor.h"
+
 #include <JniHelpers.h>
 #include <velox/vector/ComplexVector.h>
 #include "velox4j/connector/ExternalStream.h"
@@ -39,6 +41,8 @@ class DownIteratorJniWrapper final : public spotify::jni::JavaClass {
 
 class DownIterator : public ExternalStream {
  public:
+  enum class State { AVAILABLE = 0, BLOCKED = 1, FINISHED = 2 };
+
   // CTOR.
   DownIterator(JNIEnv* env, jobject ref);
 
@@ -51,12 +55,16 @@ class DownIterator : public ExternalStream {
   // DTOR.
   ~DownIterator() override;
 
-  bool hasNext() override;
-
-  facebook::velox::RowVectorPtr next() override;
+  std::optional<facebook::velox::RowVectorPtr> read(
+      facebook::velox::ContinueFuture& future) override;
 
  private:
+  State advance();
+  facebook::velox::RowVectorPtr get();
+
   jobject ref_;
+  std::mutex mutex_;
+  std::vector<facebook::velox::ContinuePromise> promises_{};
 };
 
 } // namespace velox4j

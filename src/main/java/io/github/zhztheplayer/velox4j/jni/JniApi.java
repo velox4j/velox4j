@@ -57,8 +57,8 @@ public final class JniApi {
     return new UpIterator(this, jni.executeQuery(queryJson));
   }
 
-  public RowVector upIteratorNext(UpIterator itr) {
-    return baseVectorWrap(jni.upIteratorNext(itr.id())).asRowVector();
+  public RowVector upIteratorGet(UpIterator itr) {
+    return baseVectorWrap(jni.upIteratorGet(itr.id())).asRowVector();
   }
 
   public ExternalStream newExternalStream(DownIterator itr) {

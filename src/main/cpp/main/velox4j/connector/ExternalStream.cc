@@ -123,7 +123,6 @@ std::optional<RowVectorPtr> ExternalStreamDataSource::next(
       streams_.pop();
       continue;
     }
-    bool hasNext;
     {
       // We are leaving Velox task execution and are entering external code.
       // Suspend the current driver to make the current task open to spilling.
@@ -142,26 +141,14 @@ std::optional<RowVectorPtr> ExternalStreamDataSource::next(
           driverThreadCtx,
           "ExternalStreamDataSource::next() is not called from a driver thread");
       SuspendedSection ss(driverThreadCtx->driverCtx()->driver);
-      hasNext = current_->hasNext();
+      const std::optional<RowVectorPtr> vector = current_->read(future);
+      if (vector == nullptr) {
+        // End of the current stream.
+        current_ = nullptr;
+        continue;
+      }
+      return vector;
     }
-    if (!hasNext) {
-      // End of the current stream.
-      current_ = nullptr;
-      continue;
-    }
-    RowVectorPtr vector;
-    {
-      // The same reason as above of the suspension.
-      const exec::DriverThreadContext* driverThreadCtx =
-          exec::driverThreadContext();
-      VELOX_CHECK_NOT_NULL(
-          driverThreadCtx,
-          "ExternalStreamDataSource::next() is not called from a driver thread");
-      SuspendedSection ss(driverThreadCtx->driverCtx()->driver);
-      vector = current_->next();
-    }
-    VELOX_CHECK_NOT_NULL(vector);
-    return vector;
   }
 }
 

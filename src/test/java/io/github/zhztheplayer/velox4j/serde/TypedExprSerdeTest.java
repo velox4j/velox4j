@@ -3,6 +3,7 @@ package io.github.zhztheplayer.velox4j.serde;
 import io.github.zhztheplayer.velox4j.Velox4j;
 import io.github.zhztheplayer.velox4j.data.BaseVector;
 import io.github.zhztheplayer.velox4j.data.BaseVectors;
+import io.github.zhztheplayer.velox4j.data.BaseVectorTests;
 import io.github.zhztheplayer.velox4j.expression.CallTypedExpr;
 import io.github.zhztheplayer.velox4j.expression.CastTypedExpr;
 import io.github.zhztheplayer.velox4j.expression.ConcatTypedExpr;
@@ -64,7 +65,7 @@ public class TypedExprSerdeTest {
   @Test
   public void testConstantTypedExpr() {
     final Session session = Velox4j.newSession(memoryManager);
-    final BaseVector intVector = SerdeTests.newSampleIntVector(session);
+    final BaseVector intVector = BaseVectorTests.newSampleIntVector(session);
     final ConstantTypedExpr expr1 = ConstantTypedExpr.create(intVector);
     SerdeTests.testVeloxSerializableRoundTrip(expr1);
     final ConstantTypedExpr expr2 = ConstantTypedExpr.create(new IntegerValue(15));

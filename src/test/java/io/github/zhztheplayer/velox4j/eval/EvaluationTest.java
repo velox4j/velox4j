@@ -4,6 +4,7 @@ import io.github.zhztheplayer.velox4j.Velox4j;
 import io.github.zhztheplayer.velox4j.config.Config;
 import io.github.zhztheplayer.velox4j.config.ConnectorConfig;
 import io.github.zhztheplayer.velox4j.data.BaseVector;
+import io.github.zhztheplayer.velox4j.data.BaseVectorTests;
 import io.github.zhztheplayer.velox4j.data.RowVector;
 import io.github.zhztheplayer.velox4j.data.SelectivityVector;
 import io.github.zhztheplayer.velox4j.expression.CallTypedExpr;
@@ -39,7 +40,7 @@ public class EvaluationTest {
   @Test
   public void testFieldAccess() {
     final Session session = Velox4j.newSession(memoryManager);
-    final RowVector input = SerdeTests.newSampleRowVector(session);
+    final RowVector input = BaseVectorTests.newSampleRowVector(session);
     final int size = input.getSize();
     final SelectivityVector sv = session.selectivityVectorOps().create(size);
     final Evaluation expr = new Evaluation(
@@ -59,7 +60,7 @@ public class EvaluationTest {
   @Test
   public void testMultipleEvalCalls() {
     final Session session = Velox4j.newSession(memoryManager);
-    final RowVector input = SerdeTests.newSampleRowVector(session);
+    final RowVector input = BaseVectorTests.newSampleRowVector(session);
     final int size = input.getSize();
     final SelectivityVector sv = session.selectivityVectorOps().create(size);
     final Evaluation expr = new Evaluation(
@@ -80,7 +81,7 @@ public class EvaluationTest {
   @Test
   public void testMultiply() {
     final Session session = Velox4j.newSession(memoryManager);
-    final RowVector input = SerdeTests.newSampleRowVector(session);
+    final RowVector input = BaseVectorTests.newSampleRowVector(session);
     final int size = input.getSize();
     final SelectivityVector sv = session.selectivityVectorOps().create(size);
     final Evaluation expr = new Evaluation(

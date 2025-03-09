@@ -46,9 +46,8 @@ class ExternalStream {
   // DTOR.
   virtual ~ExternalStream() = default;
 
-  virtual bool hasNext() = 0;
-
-  virtual facebook::velox::RowVectorPtr next() = 0;
+  virtual std::optional<facebook::velox::RowVectorPtr> read(
+      facebook::velox::ContinueFuture& future) = 0;
 };
 
 class ExternalStreamConnectorSplit
@@ -92,8 +91,9 @@ class ExternalStreamDataSource : public facebook::velox::connector::DataSource {
       const std::shared_ptr<facebook::velox::connector::ConnectorTableHandle>&
           tableHandle);
 
-  void addSplit(std::shared_ptr<facebook::velox::connector::ConnectorSplit>
-                    split) override;
+  void addSplit(
+      std::shared_ptr<facebook::velox::connector::ConnectorSplit> split)
+      override;
 
   std::optional<facebook::velox::RowVectorPtr> next(
       uint64_t size,

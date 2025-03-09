@@ -23,13 +23,14 @@ public class StaticJniWrapper {
   native void releaseCppObject(long objectId);
 
   // For UpIterator.
-  native boolean upIteratorHasNext(long address);
+  native int upIteratorAdvance(long id);
+  native void upIteratorWait(long id);
 
   // For Variant.
   native String variantInferType(String json);
 
   // For BaseVector / RowVector / SelectivityVector.
-  native void baseVectorToArrow(long rvAddress, long cSchema, long cArray);
+  native void baseVectorToArrow(long rvid, long cSchema, long cArray);
   native String baseVectorSerialize(long[] id);
   native String baseVectorGetType(long id);
   native int baseVectorGetSize(long id);

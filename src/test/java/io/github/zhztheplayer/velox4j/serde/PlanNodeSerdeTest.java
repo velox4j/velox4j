@@ -4,6 +4,7 @@ import io.github.zhztheplayer.velox4j.Velox4j;
 import io.github.zhztheplayer.velox4j.aggregate.Aggregate;
 import io.github.zhztheplayer.velox4j.aggregate.AggregateStep;
 import io.github.zhztheplayer.velox4j.connector.CommitStrategy;
+import io.github.zhztheplayer.velox4j.data.BaseVectorTests;
 import io.github.zhztheplayer.velox4j.expression.ConstantTypedExpr;
 import io.github.zhztheplayer.velox4j.expression.FieldAccessTypedExpr;
 import io.github.zhztheplayer.velox4j.plan.TableWriteNode;
@@ -68,9 +69,10 @@ public class PlanNodeSerdeTest {
 
   @Test
   public void testValuesNode() {
+    // The case fails in debug build. Should investigate.
     final Session session = Velox4j.newSession(memoryManager);
     final PlanNode values = ValuesNode.create("id-1",
-        List.of(SerdeTests.newSampleRowVector(session)), true, 1);
+        List.of(BaseVectorTests.newSampleRowVector(session)), true, 1);
     SerdeTests.testVeloxSerializableRoundTrip(values);
     session.close();
   }

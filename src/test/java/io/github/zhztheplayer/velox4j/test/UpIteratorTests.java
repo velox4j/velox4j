@@ -2,7 +2,9 @@ package io.github.zhztheplayer.velox4j.test;
 
 import io.github.zhztheplayer.velox4j.collection.Streams;
 import io.github.zhztheplayer.velox4j.data.RowVector;
+import io.github.zhztheplayer.velox4j.iterator.CloseableIterator;
 import io.github.zhztheplayer.velox4j.iterator.UpIterator;
+import io.github.zhztheplayer.velox4j.iterator.UpIterators;
 import io.github.zhztheplayer.velox4j.serde.Serde;
 import org.apache.arrow.memory.RootAllocator;
 import org.junit.Assert;
@@ -21,7 +23,8 @@ public final class UpIteratorTests {
   }
 
   private static List<RowVector> collect(UpIterator itr) {
-    final List<RowVector> vectors = Streams.fromIterator(itr).collect(Collectors.toList());
+    final List<RowVector> vectors = Streams.fromIterator(UpIterators.asJavaIterator(itr))
+        .collect(Collectors.toList());
     return vectors;
   }
 
@@ -31,12 +34,12 @@ public final class UpIteratorTests {
 
   public static class IteratorAssertionBuilder {
     private final RootAllocator alloc = new RootAllocator();
-    private final UpIterator itr;
+    private final CloseableIterator<RowVector> itr;
     private final List<Consumer<Argument>> assertions = new ArrayList<>();
     private final List<Runnable> finalAssertions = new ArrayList<>();
 
     private IteratorAssertionBuilder(UpIterator itr) {
-      this.itr = itr;
+      this.itr = UpIterators.asJavaIterator(itr);
     }
 
     public IteratorAssertionBuilder assertNumRowVectors(int expected) {

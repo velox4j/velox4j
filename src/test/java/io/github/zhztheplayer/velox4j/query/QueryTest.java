@@ -20,13 +20,16 @@ import io.github.zhztheplayer.velox4j.connector.HiveConnectorSplit;
 import io.github.zhztheplayer.velox4j.connector.HiveInsertTableHandle;
 import io.github.zhztheplayer.velox4j.connector.HiveTableHandle;
 import io.github.zhztheplayer.velox4j.connector.LocationHandle;
+import io.github.zhztheplayer.velox4j.data.BaseVectorTests;
 import io.github.zhztheplayer.velox4j.data.RowVector;
 import io.github.zhztheplayer.velox4j.exception.VeloxException;
 import io.github.zhztheplayer.velox4j.expression.CallTypedExpr;
 import io.github.zhztheplayer.velox4j.expression.ConstantTypedExpr;
 import io.github.zhztheplayer.velox4j.expression.FieldAccessTypedExpr;
 import io.github.zhztheplayer.velox4j.iterator.DownIterator;
+import io.github.zhztheplayer.velox4j.iterator.DownIterators;
 import io.github.zhztheplayer.velox4j.iterator.UpIterator;
+import io.github.zhztheplayer.velox4j.iterator.UpIterators;
 import io.github.zhztheplayer.velox4j.jni.JniWorkspace;
 import io.github.zhztheplayer.velox4j.join.JoinType;
 import io.github.zhztheplayer.velox4j.memory.AllocationListener;
@@ -53,6 +56,7 @@ import io.github.zhztheplayer.velox4j.type.RowType;
 import io.github.zhztheplayer.velox4j.type.Type;
 import io.github.zhztheplayer.velox4j.type.VarCharType;
 import io.github.zhztheplayer.velox4j.variant.BigIntValue;
+import io.github.zhztheplayer.velox4j.variant.BooleanValue;
 import io.github.zhztheplayer.velox4j.write.TableWriteTraits;
 import org.junit.AfterClass;
 import org.junit.Assert;
@@ -61,12 +65,8 @@ import org.junit.Test;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.OptionalInt;
-import java.util.UUID;
+import java.util.*;
+import java.util.concurrent.LinkedBlockingQueue;
 import java.util.stream.Collectors;
 
 public class QueryTest {
@@ -135,7 +135,7 @@ public class QueryTest {
         Map.of("max_output_batch_rows", String.format("%d", maxOutputBatchRows))),
         ConnectorConfig.empty());
     final UpIterator itr = session.queryOps().execute(query);
-    final List<RowVector> allRvs = Streams.fromIterator(itr)
+    final List<RowVector> allRvs = Streams.fromIterator(UpIterators.asJavaIterator(itr))
         .map(v -> v.loadedVector().asRowVector())
         .collect(Collectors.toList());
     Assert.assertTrue(allRvs.size() > 1);
@@ -164,7 +164,7 @@ public class QueryTest {
         Map.of("max_output_batch_rows", String.format("%d", maxOutputBatchRows))),
         ConnectorConfig.empty());
     final UpIterator itr = session.queryOps().execute(query);
-    final List<RowVector> allRvs = Streams.fromIterator(itr).collect(Collectors.toList());
+    final List<RowVector> allRvs = Streams.fromIterator(UpIterators.asJavaIterator(itr)).collect(Collectors.toList());
     Assert.assertTrue(allRvs.size() > 1);
     for (int i = 0; i < allRvs.size(); i++) {
       final RowVector rv = allRvs.get(i);
@@ -218,11 +218,11 @@ public class QueryTest {
   }
 
   @Test
-  public void testExternalStream() {
+  public void testExternalStreamFromJavaIterator() {
     final Session session = Velox4j.newSession(memoryManager);
     final String json = SampleQueryTests.readQueryJson();
     final UpIterator sampleIn = session.queryOps().execute(Serde.fromJson(json, Query.class));
-    final DownIterator down = new DownIterator(sampleIn);
+    final DownIterator down = DownIterators.fromJavaIterator(UpIterators.asJavaIterator(sampleIn));
     final ExternalStream es = session.externalStreamOps().bind(down);
     final TableScanNode scanNode = new TableScanNode(
         "id-1",
@@ -240,6 +240,110 @@ public class QueryTest {
     final Query query = new Query(scanNode, splits, Config.empty(), ConnectorConfig.empty());
     final UpIterator out = session.queryOps().execute(query);
     SampleQueryTests.assertIterator(out);
+    session.close();
+  }
+
+  @Test
+  public void testExternalStreamFromQueue() {
+    final Session session = Velox4j.newSession(memoryManager);
+    final Queue<RowVector> queue = new LinkedList<>();
+    final DownIterator down = DownIterators.fromQueue(queue);
+    final ExternalStream es = session.externalStreamOps().bind(down);
+    final TableScanNode scanNode = new TableScanNode(
+        "id-1",
+        SampleQueryTests.getSchema(),
+        new ExternalStreamTableHandle("connector-external-stream"),
+        List.of()
+    );
+    final List<BoundSplit> splits = List.of(
+        new BoundSplit(
+            scanNode.getId(),
+            -1,
+            new ExternalStreamConnectorSplit("connector-external-stream", es.id())
+        )
+    );
+    final Query query = new Query(scanNode, splits, Config.empty(), ConnectorConfig.empty());
+    final UpIterator out = session.queryOps().execute(query);
+    final RowVector rv = BaseVectorTests.newSampleRowVector(session);
+
+    // No input added, the up-iterator is considered blocked.
+    Assert.assertThrows(VeloxException.class, out::get);
+    Assert.assertEquals(UpIterator.State.BLOCKED, out.advance());
+    Assert.assertEquals(UpIterator.State.BLOCKED, out.advance());
+
+    // Add one input.
+    queue.add(rv);
+    Assert.assertEquals(UpIterator.State.AVAILABLE, out.advance());
+    Assert.assertThrows(VeloxException.class, out::advance);
+    BaseVectorTests.assertEquals(rv, out.get());
+    Assert.assertThrows(VeloxException.class, out::get);
+    Assert.assertEquals(UpIterator.State.BLOCKED, out.advance());
+    Assert.assertEquals(UpIterator.State.BLOCKED, out.advance());
+
+    // Add multiple inputs at a time.
+    queue.add(rv);
+    queue.add(rv);
+    Assert.assertEquals(UpIterator.State.AVAILABLE, out.advance());
+    Assert.assertThrows(VeloxException.class, out::advance);
+    BaseVectorTests.assertEquals(rv, out.get());
+    Assert.assertThrows(VeloxException.class, out::get);
+    Assert.assertEquals(UpIterator.State.AVAILABLE, out.advance());
+    Assert.assertThrows(VeloxException.class, out::advance);
+    BaseVectorTests.assertEquals(rv, out.get());
+    Assert.assertThrows(VeloxException.class, out::get);
+    Assert.assertEquals(UpIterator.State.BLOCKED, out.advance());
+    Assert.assertEquals(UpIterator.State.BLOCKED, out.advance());
+
+    session.close();
+  }
+
+
+  @Test
+  public void testExternalStreamFromQueueWithInputFiltered() throws InterruptedException {
+    final Session session = Velox4j.newSession(memoryManager);
+    final Queue<RowVector> queue = new LinkedList<>();
+    final DownIterator down = DownIterators.fromQueue(queue);
+    final ExternalStream es = session.externalStreamOps().bind(down);
+    final TableScanNode scanNode = new TableScanNode(
+        "id-1",
+        SampleQueryTests.getSchema(),
+        new ExternalStreamTableHandle("connector-external-stream"),
+        List.of()
+    );
+    final FilterNode filterNode = new FilterNode(
+        "id-2",
+        List.of(scanNode),
+        ConstantTypedExpr.create(new BooleanValue(false))
+    );
+    final List<BoundSplit> splits = List.of(
+        new BoundSplit(
+            scanNode.getId(),
+            -1,
+            new ExternalStreamConnectorSplit("connector-external-stream", es.id())
+        )
+    );
+    final Query query = new Query(filterNode, splits, Config.empty(), ConnectorConfig.empty());
+    final UpIterator out = session.queryOps().execute(query);
+    final RowVector rv = BaseVectorTests.newSampleRowVector(session);
+
+    // No input added, the up-iterator is considered blocked.
+    Assert.assertThrows(VeloxException.class, out::get);
+    Assert.assertEquals(UpIterator.State.BLOCKED, out.advance());
+    Assert.assertEquals(UpIterator.State.BLOCKED, out.advance());
+
+    // Add one input.
+    queue.add(rv);
+    Thread.sleep(500L);
+    Assert.assertEquals(UpIterator.State.BLOCKED, out.advance());
+    Assert.assertEquals(UpIterator.State.BLOCKED, out.advance());
+
+    // Add multiple inputs at a time.
+    queue.add(rv);
+    queue.add(rv);
+    Thread.sleep(500L);
+    Assert.assertEquals(UpIterator.State.BLOCKED, out.advance());
+    Assert.assertEquals(UpIterator.State.BLOCKED, out.advance());
+
     session.close();
   }
 
@@ -409,7 +513,8 @@ public class QueryTest {
         .run();
 
     // Read the file we just wrote.
-    final File writtenFile = folder.toPath().resolve(fileName).toFile();;
+    final File writtenFile = folder.toPath().resolve(fileName).toFile();
+    ;
     final TableScanNode scanNode2 = newSampleTableScanNode("id-1", schema);
     final List<BoundSplit> splits2 = List.of(
         newSampleSplit(scanNode2, writtenFile)
@@ -466,7 +571,7 @@ public class QueryTest {
     return list;
   }
 
-  public static List<HiveColumnHandle> toColumnHandles(RowType rowType) {
+  private static List<HiveColumnHandle> toColumnHandles(RowType rowType) {
     final List<HiveColumnHandle> list = new ArrayList<>();
     for (int i = 0; i < rowType.size(); i++) {
       final String name = rowType.getNames().get(i);

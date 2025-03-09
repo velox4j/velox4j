@@ -23,6 +23,8 @@ namespace velox4j {
 
 class UpIterator {
  public:
+  enum class State { AVAILABLE = 0, BLOCKED = 1, FINISHED = 2 };
+
   // CTOR.
   UpIterator() = default;
 
@@ -35,7 +37,7 @@ class UpIterator {
   // DTOR.
   virtual ~UpIterator() = default;
 
-  virtual bool hasNext() = 0;
-  virtual facebook::velox::RowVectorPtr next() = 0;
+  virtual State advance() = 0;
+  virtual facebook::velox::RowVectorPtr get() = 0;
 };
 } // namespace velox4j

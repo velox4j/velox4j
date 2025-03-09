@@ -1,26 +1,32 @@
 package io.github.zhztheplayer.velox4j.iterator;
 
-import io.github.zhztheplayer.velox4j.data.RowVector;
 import io.github.zhztheplayer.velox4j.jni.CalledFromNative;
-import io.github.zhztheplayer.velox4j.jni.JniApi;
-import io.github.zhztheplayer.velox4j.jni.CppObject;
 
-import java.util.Iterator;
+public interface DownIterator {
+  enum State {
+    AVAILABLE(0),
+    BLOCKED(1),
+    FINISHED(2);
 
-public class DownIterator {
-  private final Iterator<RowVector> delegated;
+    private final int id;
 
-  public DownIterator(Iterator<RowVector> delegated) {
-    this.delegated = delegated;
+    State(int id) {
+      this.id = id;
+    }
+
+    public int getId() {
+      return id;
+    }
   }
 
   @CalledFromNative
-  public boolean hasNext() {
-    return delegated.hasNext();
+  default int advance() {
+      return advance0().getId();
   }
-
   @CalledFromNative
-  public long next() {
-    return delegated.next().id();
-  }
+  long get();
+  @CalledFromNative
+  void close();
+
+  State advance0();
 }

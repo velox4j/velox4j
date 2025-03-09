@@ -280,22 +280,6 @@ public final class SerdeTests {
     return new RowType(List.of("foo", "bar"), List.of(new IntegerType(), new IntegerType()));
   }
 
-  public static BaseVector newSampleIntVector(Session session) {
-    final BufferAllocator alloc = new RootAllocator();
-    final IntVector arrowVector = new IntVector("foo", alloc);
-    arrowVector.setValueCount(1);
-    arrowVector.set(0, 15);
-    final BaseVector baseVector = session.arrowOps().fromArrowVector(alloc, arrowVector);
-    arrowVector.close();
-    return baseVector;
-  }
-
-  public static RowVector newSampleRowVector(Session session) {
-    final String serialized = ResourceTests.readResourceAsString("vector/rowvector-1.b64");
-    final BaseVector deserialized = session.baseVectorOps().deserializeOne(serialized);
-    return deserialized.asRowVector();
-  }
-
   public static class ObjectAndJson<T> {
     private final T obj;
     private final String json;

@@ -90,49 +90,40 @@ class Out : public UpIterator {
     }
   }
 
-  bool hasNext() override {
-    if (task_->isFinished()) {
-      return false;
+  State advance() override {
+    if (hasPendingState) {
+      hasPendingState = false;
+      return pendingState_;
     }
-    if (pending_ != nullptr) {
-      return true;
-    }
-    advance();
-    return pending_ != nullptr;
-  }
-
-  RowVectorPtr next() override {
-    if (!hasNext()) {
-      VELOX_FAIL("The iterator is drained");
-    }
-    auto result = pending_;
-    pending_ = nullptr;
-    return result;
-  }
-
- private:
-  void advance() {
     VELOX_CHECK_NULL(pending_);
-    RowVectorPtr vector;
-    while (true) {
-      auto future = ContinueFuture::makeEmpty();
-      auto out = task_->next(&future);
-      if (!future.valid()) {
-        // Not need to wait. Break.
-        vector = std::move(out);
-        break;
-      }
-      // Velox suggested to wait. This might be because another thread (e.g.,
-      // background io thread) is spilling the task.
-      VELOX_CHECK_NULL(
-          out,
-          "Expected to wait but still got non-null output from Velox task");
-      VLOG(2)
-          << "Velox task " << task_->taskId()
-          << " is busy when ::next() is called. Will wait and try again. Task state: "
-          << taskStateString(task_->state());
-      future.wait();
+    if (!task_->isRunning()) {
+      return State::FINISHED;
     }
+    auto future = ContinueFuture::makeEmpty();
+    auto out = task_->next(&future);
+    saveDrivers();
+    if (!future.valid()) {
+      // Velox task is not blocked and a row vector should be gotten.
+      if (out == nullptr) {
+        return State::FINISHED;
+      }
+      pending_ = std::move(out);
+      return State::AVAILABLE;
+    }
+    return State::BLOCKED;
+  }
+
+  RowVectorPtr get() override {
+    VELOX_CHECK(!hasPendingState);
+    VELOX_CHECK_NOT_NULL(
+        pending_,
+        "Out: No pending row vector to return.  No pending row vector to return. Make sure the iterator is available via member function advance() first");
+    const auto out = pending_;
+    pending_ = nullptr;
+    return out;
+  }
+
+  void saveDrivers() {
     if (drivers_.empty()) {
       // Save driver references in the first run.
       //
@@ -150,14 +141,15 @@ class Out : public UpIterator {
       });
       VELOX_CHECK(!drivers_.empty());
     }
-    pending_ = vector;
   }
 
   MemoryManager* const memoryManager_;
   const std::string queryJson_;
   std::shared_ptr<exec::Task> task_;
   std::vector<std::shared_ptr<exec::Driver>> drivers_{};
-  RowVectorPtr pending_;
+  bool hasPendingState{false};
+  State pendingState_;
+  RowVectorPtr pending_{nullptr};
 };
 } // namespace
 

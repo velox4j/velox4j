@@ -80,10 +80,10 @@ jlong executeQuery(JNIEnv* env, jobject javaThis, jstring queryJson) {
   JNI_METHOD_END(-1L)
 }
 
-jlong upIteratorNext(JNIEnv* env, jobject javaThis, jlong itrId) {
+jlong upIteratorGet(JNIEnv* env, jobject javaThis, jlong itrId) {
   JNI_METHOD_START
   auto itr = ObjectStore::retrieve<UpIterator>(itrId);
-  return sessionOf(env, javaThis)->objectStore()->save(itr->next());
+  return sessionOf(env, javaThis)->objectStore()->save(itr->get());
   JNI_METHOD_END(-1L)
 }
 
@@ -239,16 +239,35 @@ class ExternalStreamAsUpIterator : public UpIterator {
   explicit ExternalStreamAsUpIterator(const std::shared_ptr<ExternalStream>& es)
       : es_(es) {}
 
-  bool hasNext() override {
-    return es_->hasNext();
+  State advance() override {
+    VELOX_CHECK_NULL(pending_);
+    ContinueFuture future = ContinueFuture::makeEmpty();
+    auto out = es_->read(future);
+    if (out == std::nullopt) {
+      VELOX_CHECK(future.valid());
+      // Do not wait for the future to be fulfilled, just return.
+      return State::BLOCKED;
+    }
+    VELOX_CHECK(!future.valid());
+    if (out == nullptr) {
+      return State::FINISHED;
+    }
+    pending_ = out.value();
+    return State::AVAILABLE;
   }
 
-  RowVectorPtr next() override {
-    return es_->next();
-  }
+  RowVectorPtr get() override {
+    VELOX_CHECK_NOT_NULL(
+        pending_,
+        "ExternalStreamAsUpIterator: No pending row vector to return. Make sure the iterator is available via member function advance() first");
+    auto out = pending_;
+    pending_ = nullptr;
+    return out;
+  };
 
  private:
-  std::shared_ptr<ExternalStream> es_;
+  const std::shared_ptr<ExternalStream> es_;
+  RowVectorPtr pending_{nullptr};
 };
 
 jlong createUpIteratorWithExternalStream(
@@ -291,7 +310,7 @@ void JniWrapper::initialize(JNIEnv* env) {
   addNativeMethod(
       "executeQuery", (void*)executeQuery, kTypeLong, kTypeString, nullptr);
   addNativeMethod(
-      "upIteratorNext", (void*)upIteratorNext, kTypeLong, kTypeLong, nullptr);
+      "upIteratorGet", (void*)upIteratorGet, kTypeLong, kTypeLong, nullptr);
   addNativeMethod(
       "newExternalStream",
       (void*)newExternalStream,

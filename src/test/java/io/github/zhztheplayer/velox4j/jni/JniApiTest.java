@@ -20,10 +20,13 @@ package io.github.zhztheplayer.velox4j.jni;
 import io.github.zhztheplayer.velox4j.arrow.Arrow;
 import io.github.zhztheplayer.velox4j.connector.ExternalStream;
 import io.github.zhztheplayer.velox4j.data.BaseVector;
+import io.github.zhztheplayer.velox4j.data.BaseVectorTests;
 import io.github.zhztheplayer.velox4j.data.RowVector;
 import io.github.zhztheplayer.velox4j.exception.VeloxException;
 import io.github.zhztheplayer.velox4j.iterator.DownIterator;
+import io.github.zhztheplayer.velox4j.iterator.DownIterators;
 import io.github.zhztheplayer.velox4j.iterator.UpIterator;
+import io.github.zhztheplayer.velox4j.iterator.UpIterators;
 import io.github.zhztheplayer.velox4j.memory.AllocationListener;
 import io.github.zhztheplayer.velox4j.memory.MemoryManager;
 import io.github.zhztheplayer.velox4j.session.Session;
@@ -142,11 +145,10 @@ public class JniApiTest {
     final String json = SampleQueryTests.readQueryJson();
     final UpIterator itr = jniApi.executeQuery(json);
     final RowVector vector = UpIteratorTests.collectSingleVector(itr);
-    final String serialized = StaticJniApi.get().baseVectorSerialize(List.of(vector));
+    final List<RowVector> vectors = List.of(vector);
+    final String serialized = StaticJniApi.get().baseVectorSerialize(vectors);
     final List<BaseVector> deserialized = jniApi.baseVectorDeserialize(serialized);
-    Assert.assertEquals(1, deserialized.size());
-    final String serializedSecond = StaticJniApi.get().baseVectorSerialize(deserialized);
-    Assert.assertEquals(serialized, serializedSecond);
+    BaseVectorTests.assertEquals(vectors, deserialized);
     session.close();
     ;
   }
@@ -159,11 +161,10 @@ public class JniApiTest {
     final String json = SampleQueryTests.readQueryJson();
     final UpIterator itr = jniApi.executeQuery(json);
     final RowVector vector = UpIteratorTests.collectSingleVector(itr);
-    final String serialized = StaticJniApi.get().baseVectorSerialize(List.of(vector, vector));
+    final List<RowVector> vectors = List.of(vector, vector);
+    final String serialized = StaticJniApi.get().baseVectorSerialize(vectors);
     final List<BaseVector> deserialized = jniApi.baseVectorDeserialize(serialized);
-    Assert.assertEquals(2, deserialized.size());
-    final String serializedSecond = StaticJniApi.get().baseVectorSerialize(deserialized);
-    Assert.assertEquals(serialized, serializedSecond);
+    BaseVectorTests.assertEquals(vectors, deserialized);
     session.close();
   }
 
@@ -174,12 +175,10 @@ public class JniApiTest {
     final String json = SampleQueryTests.readQueryJson();
     final UpIterator itr = jniApi.executeQuery(json);
     final RowVector vector = UpIteratorTests.collectSingleVector(itr);
-    final String serialized = StaticJniApi.get().baseVectorSerialize(List.of(vector));
     final BufferAllocator alloc = new RootAllocator(Long.MAX_VALUE);
     final FieldVector arrowVector = Arrow.toArrowVector(alloc, vector);
     final BaseVector imported = session.arrowOps().fromArrowVector(alloc, arrowVector);
-    final String serializedImported = StaticJniApi.get().baseVectorSerialize(List.of(imported));
-    Assert.assertEquals(serialized, serializedImported);
+    BaseVectorTests.assertEquals(vector, imported);
     arrowVector.close();
     session.close();
   }
@@ -197,7 +196,7 @@ public class JniApiTest {
     final JniApi jniApi = getJniApi(session);
     final String json = SampleQueryTests.readQueryJson();
     final UpIterator itr = jniApi.executeQuery(json);
-    final DownIterator down = new DownIterator(itr);
+    final DownIterator down = DownIterators.fromJavaIterator(UpIterators.asJavaIterator(itr));
     final ExternalStream es = jniApi.newExternalStream(down);
     final UpIterator up = jniApi.createUpIteratorWithExternalStream(es);
     SampleQueryTests.assertIterator(up);
@@ -210,7 +209,7 @@ public class JniApiTest {
     final JniApi jniApi = getJniApi(session);
     final String json = SampleQueryTests.readQueryJson();
     final UpIterator itr = jniApi.executeQuery(json);
-    final DownIterator down = new DownIterator(itr);
+    final DownIterator down = DownIterators.fromJavaIterator(UpIterators.asJavaIterator(itr));
     final ExternalStream es = jniApi.newExternalStream(down);
     final UpIterator up = jniApi.createUpIteratorWithExternalStream(es);
     final Thread thread = new Thread(new Runnable() {
