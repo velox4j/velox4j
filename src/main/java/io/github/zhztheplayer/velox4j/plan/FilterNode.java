@@ -21,11 +21,12 @@ import java.util.List;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonGetter;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.google.common.base.Preconditions;
 
 import io.github.zhztheplayer.velox4j.expression.TypedExpr;
 
 public class FilterNode extends PlanNode {
-  private final List<PlanNode> sources;
+  private List<PlanNode> sources;
   private final TypedExpr filter;
 
   @JsonCreator
@@ -46,5 +47,15 @@ public class FilterNode extends PlanNode {
   @JsonGetter("filter")
   public TypedExpr getFilter() {
     return filter;
+  }
+
+  @Override
+  public void setSources(List<PlanNode> sources) {
+    if (this.sources != null && !this.sources.isEmpty()) {
+      this.sources.forEach(planNode -> planNode.setSources(sources));
+    } else {
+      Preconditions.checkArgument(sources.size() == 1, "Filter only accept one source");
+      this.sources = sources;
+    }
   }
 }
