@@ -21,6 +21,7 @@ import java.util.List;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonGetter;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.google.common.base.Preconditions;
 
 import io.github.zhztheplayer.velox4j.connector.CommitStrategy;
 import io.github.zhztheplayer.velox4j.connector.ConnectorInsertTableHandle;
@@ -35,7 +36,7 @@ public class TableWriteNode extends PlanNode {
   private final boolean hasPartitioningScheme;
   private final RowType outputType;
   private final CommitStrategy commitStrategy;
-  private final List<PlanNode> sources;
+  private List<PlanNode> sources;
 
   @JsonCreator
   public TableWriteNode(
@@ -103,5 +104,15 @@ public class TableWriteNode extends PlanNode {
   @Override
   protected List<PlanNode> getSources() {
     return sources;
+  }
+
+  @Override
+  public void setSources(List<PlanNode> sources) {
+    if (this.sources != null && !this.sources.isEmpty()) {
+      this.sources.forEach(planNode -> planNode.setSources(sources));
+    } else {
+      Preconditions.checkArgument(sources.size() == 1, "TableWrite only accept one source");
+      this.sources = sources;
+    }
   }
 }
