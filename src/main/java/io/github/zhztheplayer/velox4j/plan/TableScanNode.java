@@ -25,6 +25,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 
 import io.github.zhztheplayer.velox4j.connector.Assignment;
 import io.github.zhztheplayer.velox4j.connector.ConnectorTableHandle;
+import io.github.zhztheplayer.velox4j.exception.VeloxException;
 import io.github.zhztheplayer.velox4j.type.Type;
 
 public class TableScanNode extends PlanNode {
@@ -62,5 +63,10 @@ public class TableScanNode extends PlanNode {
   @Override
   protected List<PlanNode> getSources() {
     return Collections.emptyList();
+  }
+
+  @Override
+  public void setSources(List<PlanNode> sources) {
+    throw new VeloxException("TableScan should not set sources");
   }
 }
