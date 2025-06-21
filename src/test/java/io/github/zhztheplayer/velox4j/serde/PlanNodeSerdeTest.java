@@ -16,6 +16,7 @@
 */
 package io.github.zhztheplayer.velox4j.serde;
 
+import java.util.Collections;
 import java.util.List;
 
 import org.junit.*;
@@ -25,6 +26,7 @@ import io.github.zhztheplayer.velox4j.aggregate.Aggregate;
 import io.github.zhztheplayer.velox4j.aggregate.AggregateStep;
 import io.github.zhztheplayer.velox4j.connector.CommitStrategy;
 import io.github.zhztheplayer.velox4j.data.BaseVectorTests;
+import io.github.zhztheplayer.velox4j.expression.CallTypedExpr;
 import io.github.zhztheplayer.velox4j.expression.ConstantTypedExpr;
 import io.github.zhztheplayer.velox4j.expression.FieldAccessTypedExpr;
 import io.github.zhztheplayer.velox4j.join.JoinType;
@@ -39,12 +41,17 @@ import io.github.zhztheplayer.velox4j.plan.PlanNode;
 import io.github.zhztheplayer.velox4j.plan.ProjectNode;
 import io.github.zhztheplayer.velox4j.plan.TableWriteNode;
 import io.github.zhztheplayer.velox4j.plan.ValuesNode;
+import io.github.zhztheplayer.velox4j.plan.WindowNode;
 import io.github.zhztheplayer.velox4j.session.Session;
 import io.github.zhztheplayer.velox4j.sort.SortOrder;
 import io.github.zhztheplayer.velox4j.test.Velox4jTests;
 import io.github.zhztheplayer.velox4j.type.IntegerType;
 import io.github.zhztheplayer.velox4j.type.RowType;
 import io.github.zhztheplayer.velox4j.variant.BooleanValue;
+import io.github.zhztheplayer.velox4j.window.BoundType;
+import io.github.zhztheplayer.velox4j.window.WindowFrame;
+import io.github.zhztheplayer.velox4j.window.WindowFunction;
+import io.github.zhztheplayer.velox4j.window.WindowType;
 
 public class PlanNodeSerdeTest {
   private static MemoryManager memoryManager;
@@ -203,5 +210,39 @@ public class PlanNodeSerdeTest {
             CommitStrategy.TASK_COMMIT,
             List.of(scan));
     SerdeTests.testISerializableRoundTrip(tableWriteNode);
+  }
+
+  @Test
+  public void testWindowType() {
+    SerdeTests.testJavaBeanRoundTrip(WindowType.ROWS);
+  }
+
+  @Test
+  public void testBoundType() {
+    SerdeTests.testJavaBeanRoundTrip(BoundType.CURRENT_ROW);
+  }
+
+  @Test
+  public void testWindowNode() {
+    final RowType rowType = SerdeTests.newSampleOutputType();
+    final PlanNode scan = SerdeTests.newSampleTableScanNode("id-1", rowType);
+    final CallTypedExpr call =
+        new CallTypedExpr(
+            new IntegerType(),
+            Collections.singletonList(FieldAccessTypedExpr.create(new IntegerType(), "foo")),
+            "sum");
+    final WindowFrame frame =
+        new WindowFrame(WindowType.RANGE, BoundType.PRECEDING, null, BoundType.FOLLOWING, null);
+    final WindowNode windowNode =
+        new WindowNode(
+            "id-2",
+            List.of(FieldAccessTypedExpr.create(new IntegerType(), "foo1")),
+            List.of(FieldAccessTypedExpr.create(new IntegerType(), "foo2")),
+            List.of(new SortOrder(true, false)),
+            List.of("foo"),
+            List.of(new WindowFunction(call, frame, true)),
+            true,
+            List.of(scan));
+    SerdeTests.testISerializableRoundTrip(windowNode);
   }
 }

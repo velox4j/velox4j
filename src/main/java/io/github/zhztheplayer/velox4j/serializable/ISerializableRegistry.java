@@ -38,6 +38,7 @@ import io.github.zhztheplayer.velox4j.plan.ProjectNode;
 import io.github.zhztheplayer.velox4j.plan.TableScanNode;
 import io.github.zhztheplayer.velox4j.plan.TableWriteNode;
 import io.github.zhztheplayer.velox4j.plan.ValuesNode;
+import io.github.zhztheplayer.velox4j.plan.WindowNode;
 import io.github.zhztheplayer.velox4j.query.Query;
 import io.github.zhztheplayer.velox4j.serde.Serde;
 import io.github.zhztheplayer.velox4j.serde.SerdeRegistry;
@@ -63,6 +64,8 @@ import io.github.zhztheplayer.velox4j.type.TinyIntType;
 import io.github.zhztheplayer.velox4j.type.UnknownType;
 import io.github.zhztheplayer.velox4j.type.VarCharType;
 import io.github.zhztheplayer.velox4j.type.VarbinaryType;
+import io.github.zhztheplayer.velox4j.window.WindowFrame;
+import io.github.zhztheplayer.velox4j.window.WindowFunction;
 
 public final class ISerializableRegistry {
   private static final SerdeRegistry NAME_REGISTRY =
@@ -77,7 +80,8 @@ public final class ISerializableRegistry {
     registerConnectors();
     registerFilters();
     registerPlanNodes();
-    retisterConfig();
+    registerWindow();
+    registerConfig();
     registerEvaluation();
     registerQuery();
   }
@@ -151,9 +155,15 @@ public final class ISerializableRegistry {
     NAME_REGISTRY.registerClass("OrderByNode", OrderByNode.class);
     NAME_REGISTRY.registerClass("LimitNode", LimitNode.class);
     NAME_REGISTRY.registerClass("TableWriteNode", TableWriteNode.class);
+    NAME_REGISTRY.registerClass("WindowNode", WindowNode.class);
   }
 
-  private static void retisterConfig() {
+  private static void registerWindow() {
+    NAME_REGISTRY.registerClass("Frame", WindowFrame.class);
+    NAME_REGISTRY.registerClass("Function", WindowFunction.class);
+  }
+
+  private static void registerConfig() {
     NAME_REGISTRY.registerClass("velox4j.Config", Config.class);
     NAME_REGISTRY.registerClass("velox4j.ConnectorConfig", ConnectorConfig.class);
   }
