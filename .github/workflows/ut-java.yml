@@ -40,8 +40,6 @@ jobs:
           "ubuntu-latest",
           "ubuntu-24.04-arm"
         ]
-        exclude:
-          - runner: "ubuntu-24.04-arm"
     runs-on: ${{ matrix.runner }}
     env:
       HOST_CCACHE_DIR: "${{ github.workspace }}/.ccache"
